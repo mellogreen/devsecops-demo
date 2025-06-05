@@ -133,16 +133,22 @@ jobs:
           severity: 'CRITICAL,HIGH'
       
       - name: Push Docker image
+        id: docker_push
         uses: docker/build-push-action@v5
         with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-      
+         context: .
+         push: ${{ github.event_name != 'pull_request' }}  # Only push if not a PR
+         tags: ${{ steps.meta.outputs.tags }}
+         labels: ${{ steps.meta.outputs.labels }}
+
       - name: Set image tag output
         id: set_output
-        run: echo "image_tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: |
+         Use the first tag from meta outputs as the image_tag
+         FULL_TAG="${{ fromJSON(steps.meta.outputs.json).tags[0] }}"
+         SHORT_SHA="${GITHUB_SHA::7}"
+         echo "image_tag=${FULL_TAG##*:}" >> $GITHUB_OUTPUT
+         echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
   update-k8s:
     name: Update Kubernetes Deployment
